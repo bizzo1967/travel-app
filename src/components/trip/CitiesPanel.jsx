@@ -155,7 +155,7 @@ function CitiesPanel() {
   return (
     <section className="page-section">
       <section className="panel-card">
-        <div className="itinerary-topbar">
+                <div className="itinerary-topbar">
           <div className="chip-row chip-row--days">
             {trip.cities.map((city) => (
               <button
@@ -168,13 +168,15 @@ function CitiesPanel() {
               </button>
             ))}
           </div>
+        </div>
 
-          {mode === 'organizer' && (
+        {mode === 'organizer' && (
+          <div className="itinerary-events__actions">
             <button type="button" className="primary-button" onClick={handleCreateCity}>
               + Città
             </button>
-          )}
-        </div>
+          </div>
+        )}
 
         {selectedCity && (
           <div className="itinerary-day-card">

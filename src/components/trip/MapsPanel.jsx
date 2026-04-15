@@ -181,13 +181,15 @@ function MapsPanel() {
               </button>
             ))}
           </div>
+        </div>
 
-          {mode === 'organizer' && (
+        {mode === 'organizer' && (
+          <div className="itinerary-events__actions">
             <button type="button" className="primary-button" onClick={handleCreateRoute}>
               + Mappa
             </button>
-          )}
-        </div>
+          </div>
+        )}
 
         {!selectedDay ? (
           <div className="empty-state-card">Nessun giorno disponibile.</div>

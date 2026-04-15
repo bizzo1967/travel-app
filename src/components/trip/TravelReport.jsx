@@ -2,6 +2,28 @@ import { useTrip } from '../../context/TripContext.jsx';
 import { findCityName, formatCurrency, formatDate } from '../../utils/formatters.js';
 import { getReportSections, getTripTotals } from '../../utils/report.js';
 
+function formatDocType(type) {
+  switch (type) {
+    case 'pdf':
+      return 'PDF';
+    case 'image':
+      return 'Immagine / QR';
+    case 'email':
+      return 'Email / conferma';
+    case 'ticket':
+      return 'Biglietto / prenotazione';
+    default:
+      return 'Documento';
+  }
+}
+
+function formatFileSize(bytes = 0) {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function TravelReport() {
   const { trip } = useTrip();
   const sections = getReportSections(trip);
@@ -98,20 +120,25 @@ function TravelReport() {
         </div>
 
         <div className="report-block">
-          <h2>Mappe</h2>
-          {sections.maps.map((route) => (
-            <div key={route.id} className="report-entry">
-              <h3>{route.title}</h3>
-              <p>
-                {route.mode === 'walk' ? 'A piedi' : 'Auto'} · {route.distance} · {route.duration}
-              </p>
-              <ul className="report-list">
-                {(route.stops || []).map((stop, index) => (
-                  <li key={`${route.id}-${index}`}>{stop}</li>
-                ))}
-              </ul>
+          <h2>Documenti</h2>
+          {trip.travelDocs?.length ? (
+            trip.travelDocs.map((doc) => (
+              <div key={doc.id} className="report-entry">
+                <h3>{doc.title || 'Documento viaggio'}</h3>
+                <p>Tipo: {formatDocType(doc.type)}</p>
+                {doc.fileName ? <p>File: {doc.fileName}</p> : null}
+                {doc.fileType ? <p>Formato: {doc.fileType}</p> : null}
+                {doc.fileSize ? <p>Dimensione: {formatFileSize(doc.fileSize)}</p> : null}
+                {doc.text ? (
+                  <p style={{ whiteSpace: 'pre-wrap' }}>{doc.text}</p>
+                ) : null}
+              </div>
+            ))
+          ) : (
+            <div className="report-entry">
+              <p>Nessun documento salvato.</p>
             </div>
-          ))}
+          )}
         </div>
 
         <div className="report-block">

@@ -142,39 +142,41 @@ function BottomNav() {
 
   return (
     <nav className="bottom-nav">
-      {tabs.map((tab) => {
-        const isActive = activeTab === tab.key;
+      <div className="bottom-nav__scroll">
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.key;
 
-        return (
-          <button
-            key={tab.key}
-            type="button"
-            className={`bottom-nav__item ${isActive ? 'is-active' : ''}`}
-            onClick={() => setActiveTab(tab.key)}
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 4,
-              minWidth: 56,
-              padding: '8px 6px'
-            }}
-          >
-            {tab.icon(isActive)}
-
-            <span
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              className={`bottom-nav__item ${isActive ? 'is-active' : ''}`}
+              onClick={() => setActiveTab(tab.key)}
               style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color: isActive ? 'var(--accent)' : 'var(--muted)'
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 4,
+                minWidth: 56,
+                padding: '8px 6px'
               }}
             >
-              {tab.label}
-            </span>
-          </button>
-        );
-      })}
+              {tab.icon(isActive)}
+
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: isActive ? 'var(--accent)' : 'var(--muted)'
+                }}
+              >
+                {tab.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
     </nav>
   );
 }

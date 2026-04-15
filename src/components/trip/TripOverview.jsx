@@ -220,13 +220,15 @@ function TripOverview() {
               </button>
             ))}
           </div>
+        </div>
 
-          {mode === 'organizer' && (
+        {mode === 'organizer' && (
+          <div className="itinerary-events__actions">
             <button type="button" className="primary-button" onClick={handleCreateDay}>
               + Giorno
             </button>
-          )}
-        </div>
+          </div>
+        )}
 
         <div className="itinerary-day-card">
           <div className="itinerary-day-card__header">
