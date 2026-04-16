@@ -288,16 +288,20 @@ select:focus {
 .chip-row,
 .day-tabs {
   display: flex;
+  flex-wrap: nowrap;
   gap: 8px;
   overflow-x: auto;
   overflow-y: hidden;
-  padding-bottom: 2px;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 6px;
   margin-bottom: 12px;
   min-width: 0;
+  width: 100%;
 }
 
 .chip-button,
 .day-tab {
+  flex: 0 0 auto;
   border: 1px solid var(--border);
   background: #f7f4ee;
   color: var(--text);
@@ -1016,9 +1020,29 @@ select:focus {
   min-width: 0;
 
   /* 🔥 FIX MOBILE */
-  padding-bottom: 4px;
-  padding-right: 16px; /* spazio per vedere ultimo elemento */
+  padding-bottom: 8px;
+  padding-right: 16px;
   -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: #ccc #f4f0ea;
+}
+
+.chip-row--days::-webkit-scrollbar {
+  height: 4px;
+}
+
+.chip-row--days::-webkit-scrollbar-track {
+  background: #f4f0ea;
+}
+
+.chip-row--days::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 2px;
+}
+.chip-row--days::after {
+  content: '';
+  flex: 0 0 16px; /* spazio finale scroll */
 }
 .chip-button--day {
   display: flex;

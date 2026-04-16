@@ -92,14 +92,6 @@ function TripOverview() {
     setDayEditorOpen(false);
   }, [selectedDayId, selectedDay]);
 
-  if (!selectedDay) {
-    return (
-      <section className="panel-card">
-        <p>Nessun giorno disponibile.</p>
-      </section>
-    );
-  }
-
   const handleCreateDay = () => {
     const nextIndex = trip.days.length + 1;
     addDay({
@@ -110,6 +102,7 @@ function TripOverview() {
   };
 
   const handleSaveDay = () => {
+    if (!selectedDay) return;
     updateDay(selectedDay.id, dayDraft);
     setDayEditorOpen(false);
   };
@@ -147,6 +140,8 @@ function TripOverview() {
   };
 
   const handleSaveEvent = () => {
+    if (!selectedDay) return;
+
     if (eventModal.mode === 'add') {
       addTimelineItem(selectedDay.id, eventDraft);
     } else if (eventModal.mode === 'edit' && eventModal.eventId) {
@@ -157,6 +152,8 @@ function TripOverview() {
   };
 
   const handleDeleteEvent = () => {
+    if (!selectedDay) return;
+
     if (eventModal.mode === 'edit' && eventModal.eventId) {
       removeTimelineItem(selectedDay.id, eventModal.eventId);
       closeEventModal();
@@ -182,6 +179,8 @@ function TripOverview() {
   };
 
   const handleSaveDetails = () => {
+    if (!selectedDay) return;
+
     if (detailsModal.eventId) {
       updateTimelineItem(selectedDay.id, detailsModal.eventId, {
         details: detailsModal.details
@@ -191,6 +190,8 @@ function TripOverview() {
   };
 
   const handleDeleteDetails = () => {
+    if (!selectedDay) return;
+
     if (detailsModal.eventId) {
       updateTimelineItem(selectedDay.id, detailsModal.eventId, {
         details: ''
@@ -198,6 +199,26 @@ function TripOverview() {
     }
     closeDetailsModal();
   };
+
+  if (!selectedDay) {
+    return (
+      <section className="page-section">
+        <section className="panel-card">
+          {mode === 'organizer' && (
+            <div className="itinerary-events__actions">
+              <button type="button" className="primary-button" onClick={handleCreateDay}>
+                + Giorno
+              </button>
+            </div>
+          )}
+
+          <div className="empty-state-card">
+            Nessun giorno disponibile.
+          </div>
+        </section>
+      </section>
+    );
+  }
 
   return (
     <section className="page-section">

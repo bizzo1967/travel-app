@@ -4,6 +4,7 @@ import { formatDate } from '../../utils/formatters.js';
 import { downloadJsonFile, readJsonFile } from '../../utils/fileHandlers.js';
 
 const ORGANIZER_PASSWORD = 'viaggio123';
+const ADMIN_LOCK_STORAGE_KEY = 'travel_planner_admin_lock';
 
 const PRINT_OPTIONS = [
   { key: 'overview', label: 'Itinerario' },
@@ -31,6 +32,9 @@ function TripCover() {
   const fileInputRef = useRef(null);
   const imageInputRef = useRef(null);
   const [showPrintMenu, setShowPrintMenu] = useState(false);
+  const [adminLockEnabled, setAdminLockEnabled] = useState(
+    () => window.localStorage.getItem(ADMIN_LOCK_STORAGE_KEY) === 'true'
+  );
 
   const handleChooseImage = () => {
     imageInputRef.current?.click();
@@ -85,6 +89,11 @@ function TripCover() {
       return;
     }
 
+    if (!adminLockEnabled) {
+      setMode('organizer');
+      return;
+    }
+
     const typedPassword = window.prompt(
       'Inserimento dati (solo operatore)\nInserisci la password:'
     );
@@ -99,9 +108,23 @@ function TripCover() {
     alert('Password errata.');
   };
 
+  const handleToggleAdminLock = () => {
+    const nextValue = !adminLockEnabled;
+    setAdminLockEnabled(nextValue);
+    window.localStorage.setItem(ADMIN_LOCK_STORAGE_KEY, String(nextValue));
+
+    if (nextValue) {
+      alert('Blocco admin attivato. Da ora l’accesso admin richiede password.');
+    } else {
+      alert('Blocco admin disattivato. Lo switch libero è di nuovo attivo.');
+    }
+  };
+
   const handleShowInfo = () => {
     alert(
-      `Password modalità operatore: ${ORGANIZER_PASSWORD}\n\nServe solo per evitare modifiche accidentali.`
+      `Password modalità operatore: ${ORGANIZER_PASSWORD}\nBlocco admin: ${
+        adminLockEnabled ? 'ATTIVO' : 'DISATTIVATO'
+      }\n\nQuando il blocco è disattivato puoi passare liberamente tra utente e amministratore.`
     );
   };
 
@@ -218,14 +241,16 @@ function TripCover() {
             <span>Stampa</span>
           </button>
 
-          <button
-            type="button"
-            onClick={handleExport}
-            style={coverActionButtonStyle}
-          >
-            <span aria-hidden="true">⤓</span>
-            <span>Esporta</span>
-          </button>
+          {mode === 'organizer' ? (
+            <button
+              type="button"
+              onClick={handleExport}
+              style={coverActionButtonStyle}
+            >
+              <span aria-hidden="true">⤓</span>
+              <span>Esporta</span>
+            </button>
+          ) : null}
 
           <button
             type="button"
@@ -259,19 +284,32 @@ function TripCover() {
           </button>
 
           {mode === 'organizer' ? (
-            <button
-              type="button"
-              onClick={handleReset}
-              style={{
-                ...coverActionButtonStyle,
-                gridColumn: '1 / -1',
-                color: 'var(--danger, #b42318)',
-                borderColor: 'var(--danger, #b42318)'
-              }}
-            >
-              <span aria-hidden="true">↺</span>
-              <span>Reset</span>
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={handleToggleAdminLock}
+                style={{
+                  ...coverActionButtonStyle,
+                  gridColumn: '1 / -1'
+                }}
+              >
+                {adminLockEnabled ? '🔒 Blocco attivo (tocca per sbloccare)' : '🔓 Modalità modifica libera'}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleReset}
+                style={{
+                  ...coverActionButtonStyle,
+                  gridColumn: '1 / -1',
+                  color: 'var(--danger, #b42318)',
+                  borderColor: 'var(--danger, #b42318)'
+                }}
+              >
+                <span aria-hidden="true">↺</span>
+                <span>Reset</span>
+              </button>
+            </>
           ) : null}
         </div>
 
