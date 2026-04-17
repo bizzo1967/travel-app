@@ -126,17 +126,6 @@ function BottomNav() {
           </svg>
         </Icon>
       )
-    },
-    {
-      key: 'report',
-      label: 'Report',
-      icon: (active) => (
-        <Icon active={active}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M4 20V4M10 20V10M16 20V6M22 20H2" />
-          </svg>
-        </Icon>
-      )
     }
   ];
 

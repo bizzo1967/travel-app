@@ -1,28 +1,22 @@
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { useTrip } from '../../context/TripContext.jsx';
 import { formatDate } from '../../utils/formatters.js';
 import { downloadJsonFile, readJsonFile } from '../../utils/fileHandlers.js';
 
 const ORGANIZER_PASSWORD = 'viaggio123';
-const ADMIN_LOCK_STORAGE_KEY = 'travel_planner_admin_lock';
-
-const PRINT_OPTIONS = [
-  { key: 'overview', label: 'Itinerario' },
-  { key: 'cities', label: 'Città' },
-  { key: 'flights', label: 'Voli' },
-  { key: 'hotels', label: 'Hotel' },
-  { key: 'bookings', label: 'Prenotazioni' },
-  { key: 'docs', label: 'Documenti' },
-  { key: 'costs', label: 'Costi' },
-  { key: 'report', label: 'Report' }
-];
 
 function TripCover() {
   const {
     trip,
     mode,
-    setMode,
-    activeTab,
+    adminLock,
+    isAdminAuthenticated,
+    startAdminSession,
+    endAdminSession,
+    switchToUserView,
+    switchToAdminView,
+    enableAdminLock,
+    disableAdminLock,
     setActiveTab,
     updateMeta,
     replaceTrip,
@@ -31,10 +25,8 @@ function TripCover() {
 
   const fileInputRef = useRef(null);
   const imageInputRef = useRef(null);
-  const [showPrintMenu, setShowPrintMenu] = useState(false);
-  const [adminLockEnabled, setAdminLockEnabled] = useState(
-    () => window.localStorage.getItem(ADMIN_LOCK_STORAGE_KEY) === 'true'
-  );
+
+  const isOrganizerMode = mode === 'organizer';
 
   const handleChooseImage = () => {
     imageInputRef.current?.click();
@@ -83,48 +75,41 @@ function TripCover() {
     event.target.value = '';
   };
 
-  const handleModeToggle = () => {
-    if (mode === 'organizer') {
-      setMode('travel');
-      return;
-    }
-
-    if (!adminLockEnabled) {
-      setMode('organizer');
+  const handleStartAdminSession = () => {
+    if (!adminLock) {
+      startAdminSession();
       return;
     }
 
     const typedPassword = window.prompt(
-      'Inserimento dati (solo operatore)\nInserisci la password:'
+      'Accesso operatore protetto.\nInserisci la password:'
     );
 
     if (typedPassword === null) return;
 
     if (typedPassword === ORGANIZER_PASSWORD) {
-      setMode('organizer');
+      startAdminSession();
       return;
     }
 
     alert('Password errata.');
   };
 
-  const handleToggleAdminLock = () => {
-    const nextValue = !adminLockEnabled;
-    setAdminLockEnabled(nextValue);
-    window.localStorage.setItem(ADMIN_LOCK_STORAGE_KEY, String(nextValue));
-
-    if (nextValue) {
-      alert('Blocco admin attivato. Da ora l’accesso admin richiede password.');
+  const handleTogglePassword = () => {
+    if (adminLock) {
+      disableAdminLock();
+      alert('Richiesta password disattivata.');
     } else {
-      alert('Blocco admin disattivato. Lo switch libero è di nuovo attivo.');
+      enableAdminLock();
+      alert('Richiesta password attivata.');
     }
   };
 
   const handleShowInfo = () => {
     alert(
-      `Password modalità operatore: ${ORGANIZER_PASSWORD}\nBlocco admin: ${
-        adminLockEnabled ? 'ATTIVO' : 'DISATTIVATO'
-      }\n\nQuando il blocco è disattivato puoi passare liberamente tra utente e amministratore.`
+      `Sessione operatore: ${isAdminAuthenticated ? 'attiva' : 'non attiva'}\nVista corrente: ${
+        isOrganizerMode ? 'modifica' : 'utente'
+      }\nRichiesta password: ${adminLock ? 'attiva' : 'disattiva'}\n\nPassword operatore: ${ORGANIZER_PASSWORD}`
     );
   };
 
@@ -136,42 +121,91 @@ function TripCover() {
     if (!confirmed) return;
 
     resetTrip();
-    setMode('travel');
+    endAdminSession();
   };
 
-  const handlePrintSelect = (targetTab) => {
-    setShowPrintMenu(false);
-
-    const previousTab = activeTab;
-    const previousMode = mode;
-
-    const restoreAfterPrint = () => {
-      window.removeEventListener('afterprint', restoreAfterPrint);
-      setActiveTab(previousTab);
-      setMode(previousMode);
-    };
-
-    window.addEventListener('afterprint', restoreAfterPrint);
-
-    setMode('travel');
-    setActiveTab(targetTab);
-
-    setTimeout(() => {
-      window.print();
-
-      setTimeout(() => {
-        window.removeEventListener('afterprint', restoreAfterPrint);
-        setActiveTab(previousTab);
-        setMode(previousMode);
-      }, 800);
-    }, 250);
+  const handleOpenReport = () => {
+    setActiveTab('report');
   };
 
-  const coverActionButtonStyle = {
+  const sectionCardStyle = {
+    padding: 12,
+    borderRadius: 14,
+    background: '#fff',
+    border: '1px solid var(--border)'
+  };
+
+  const topCardsGridStyle = {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+    gap: 12,
+    marginBottom: 12
+  };
+
+  const sectionTitleStyle = {
+    fontSize: 14,
+    fontWeight: 800,
+    marginBottom: 8
+  };
+
+  const helperTextStyle = {
+    fontSize: 13,
+    color: 'var(--muted)',
+    lineHeight: 1.5
+  };
+
+  const badgeRowStyle = {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8
+  };
+
+  const badgeBaseStyle = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    padding: '6px 10px',
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 700
+  };
+
+  const primaryButtonStyle = {
+    width: '100%',
+    border: '1px solid var(--accent)',
+    background: 'var(--accent)',
+    color: '#fff',
+    borderRadius: 12,
+    padding: '12px 14px',
+    fontSize: 14,
+    fontWeight: 800,
+    minHeight: 44
+  };
+
+  const secondaryWideButtonStyle = {
+    width: '100%',
+    border: '1px solid var(--border)',
+    background: '#fff',
+    color: 'var(--text)',
+    borderRadius: 12,
+    padding: '12px 14px',
+    fontSize: 14,
+    fontWeight: 800,
+    minHeight: 44
+  };
+
+  const gridStyle = {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: 8
+  };
+
+  const actionButtonStyle = {
     border: '1px solid var(--border)',
     background: '#fff',
     borderRadius: 10,
-    padding: '8px 10px',
+    padding: '10px 10px',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -179,73 +213,141 @@ function TripCover() {
     fontSize: 12,
     fontWeight: 700,
     whiteSpace: 'nowrap',
-    minHeight: 38
+    minHeight: 40
   };
 
-  const modalBackdropStyle = {
-    position: 'fixed',
-    inset: 0,
-    background: 'rgba(0,0,0,0.35)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    zIndex: 1000
-  };
-
-  const modalCardStyle = {
+  const dangerButtonStyle = {
+    ...actionButtonStyle,
     width: '100%',
-    maxWidth: 420,
-    background: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    boxShadow: '0 12px 30px rgba(0,0,0,0.18)'
-  };
-
-  const modalGridStyle = {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-    gap: 8,
-    marginTop: 12
-  };
-
-  const modalButtonStyle = {
-    border: '1px solid var(--border)',
-    background: '#fff',
-    borderRadius: 10,
-    padding: '12px 10px',
-    fontSize: 13,
-    fontWeight: 700,
-    minHeight: 44
+    color: 'var(--danger, #b42318)',
+    borderColor: 'var(--danger, #b42318)'
   };
 
   return (
     <section className="page-section">
-      <section
-        className="panel-card"
-        style={{ marginBottom: '12px', padding: '12px' }}
-      >
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-            gap: 8
-          }}
-        >
+      <div style={topCardsGridStyle}>
+        <section style={sectionCardStyle}>
+          <div style={sectionTitleStyle}>Stato</div>
+
+          <div style={{ fontSize: 15, fontWeight: 800 }}>
+            {isAdminAuthenticated
+              ? isOrganizerMode
+                ? 'Sessione operatore attiva - vista modifica'
+                : 'Sessione operatore attiva - vista utente'
+              : 'Utilizzatore normale'}
+          </div>
+
+          <div style={badgeRowStyle}>
+            <span
+              style={{
+                ...badgeBaseStyle,
+                background: isAdminAuthenticated
+                  ? 'rgba(127, 90, 240, 0.12)'
+                  : 'rgba(15, 23, 42, 0.06)',
+                color: 'var(--text)'
+              }}
+            >
+              {isAdminAuthenticated ? '🔐 Sessione operatore attiva' : '👀 Vista utilizzatore'}
+            </span>
+
+            <span
+              style={{
+                ...badgeBaseStyle,
+                background: adminLock
+                  ? 'rgba(180, 35, 24, 0.10)'
+                  : 'rgba(34, 197, 94, 0.10)',
+                color: 'var(--text)'
+              }}
+            >
+              {adminLock ? '🔒 Password attiva' : '🔓 Password disattiva'}
+            </span>
+          </div>
+
+          <div style={{ ...helperTextStyle, marginTop: 8 }}>
+            {isAdminAuthenticated
+              ? 'Puoi passare liberamente tra vista modifica e vista utente da tutte le schede.'
+              : 'Fuori dalla cover non vengono mostrati i controlli operatore.'}
+          </div>
+        </section>
+
+        <section style={sectionCardStyle}>
+          <div style={sectionTitleStyle}>Accesso operatore</div>
+
+          {!isAdminAuthenticated ? (
+            <>
+              <button
+                type="button"
+                onClick={handleStartAdminSession}
+                style={primaryButtonStyle}
+              >
+                Entra come operatore
+              </button>
+
+              <div style={{ ...helperTextStyle, marginTop: 8 }}>
+                {adminLock
+                  ? 'Per entrare nella sessione operatore serve la password.'
+                  : 'Accesso operatore libero: puoi entrare senza password.'}
+              </div>
+            </>
+          ) : (
+            <div style={{ display: 'grid', gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (isOrganizerMode) switchToUserView();
+                  else switchToAdminView();
+                }}
+                style={secondaryWideButtonStyle}
+              >
+                {isOrganizerMode ? 'Vedi come utilizzatore' : 'Torna a modifica'}
+              </button>
+
+              <button
+                type="button"
+                onClick={endAdminSession}
+                style={secondaryWideButtonStyle}
+              >
+                Esci da sessione operatore
+              </button>
+
+              <div style={helperTextStyle}>
+                Finché la sessione operatore resta attiva, puoi cambiare vista in tutte le schede.
+              </div>
+            </div>
+          )}
+        </section>
+      </div>
+
+      <section style={{ ...sectionCardStyle, marginBottom: 12 }}>
+        <div style={sectionTitleStyle}>Strumenti viaggio</div>
+
+        <div style={gridStyle}>
           <button
             type="button"
-            onClick={() => setShowPrintMenu(true)}
-            style={coverActionButtonStyle}
+            onClick={handleOpenReport}
+            style={{
+              ...actionButtonStyle,
+              gridColumn: '1 / -1'
+            }}
           >
-            <span aria-hidden="true">🖨</span>
-            <span>Stampa</span>
+            <span aria-hidden="true">📄</span>
+            <span>Apri report</span>
           </button>
 
-          {mode === 'organizer' ? (
+          <button
+            type="button"
+            onClick={handleImportClick}
+            style={actionButtonStyle}
+          >
+            <span aria-hidden="true">⤒</span>
+            <span>Importa</span>
+          </button>
+
+          {isAdminAuthenticated ? (
             <button
               type="button"
               onClick={handleExport}
-              style={coverActionButtonStyle}
+              style={actionButtonStyle}
             >
               <span aria-hidden="true">⤓</span>
               <span>Esporta</span>
@@ -254,63 +356,12 @@ function TripCover() {
 
           <button
             type="button"
-            onClick={handleImportClick}
-            style={coverActionButtonStyle}
-          >
-            <span aria-hidden="true">⤒</span>
-            <span>Importa</span>
-          </button>
-
-          <button
-            type="button"
             onClick={handleShowInfo}
-            style={coverActionButtonStyle}
+            style={actionButtonStyle}
           >
             <span aria-hidden="true">ℹ️</span>
             <span>Info</span>
           </button>
-
-          <button
-            type="button"
-            onClick={handleModeToggle}
-            style={{
-              ...coverActionButtonStyle,
-              gridColumn: '1 / -1',
-              background: 'var(--accent)',
-              color: '#fff'
-            }}
-          >
-            {mode === 'organizer' ? 'Torna al viaggio' : 'Admin'}
-          </button>
-
-          {mode === 'organizer' ? (
-            <>
-              <button
-                type="button"
-                onClick={handleToggleAdminLock}
-                style={{
-                  ...coverActionButtonStyle,
-                  gridColumn: '1 / -1'
-                }}
-              >
-                {adminLockEnabled ? '🔒 Blocco attivo (tocca per sbloccare)' : '🔓 Modalità modifica libera'}
-              </button>
-
-              <button
-                type="button"
-                onClick={handleReset}
-                style={{
-                  ...coverActionButtonStyle,
-                  gridColumn: '1 / -1',
-                  color: 'var(--danger, #b42318)',
-                  borderColor: 'var(--danger, #b42318)'
-                }}
-              >
-                <span aria-hidden="true">↺</span>
-                <span>Reset</span>
-              </button>
-            </>
-          ) : null}
         </div>
 
         <input
@@ -321,6 +372,48 @@ function TripCover() {
           onChange={handleImportChange}
         />
       </section>
+
+      {isAdminAuthenticated ? (
+        <section style={{ ...sectionCardStyle, marginBottom: 12 }}>
+          <div style={sectionTitleStyle}>Sicurezza operatore</div>
+
+          <button
+            type="button"
+            onClick={handleTogglePassword}
+            style={{
+              ...actionButtonStyle,
+              width: '100%'
+            }}
+          >
+            {adminLock ? 'Disattiva richiesta password' : 'Attiva richiesta password'}
+          </button>
+
+          <div style={{ ...helperTextStyle, marginTop: 8 }}>
+            {adminLock
+              ? 'La prossima volta, per entrare nella sessione operatore, servirà la password.'
+              : 'La prossima volta potrai entrare nella sessione operatore senza password.'}
+          </div>
+        </section>
+      ) : null}
+
+      {isAdminAuthenticated ? (
+        <section style={{ ...sectionCardStyle, marginBottom: 12 }}>
+          <div style={sectionTitleStyle}>Pericolo</div>
+
+          <button
+            type="button"
+            onClick={handleReset}
+            style={dangerButtonStyle}
+          >
+            <span aria-hidden="true">↺</span>
+            <span>Reset viaggio</span>
+          </button>
+
+          <div style={{ ...helperTextStyle, marginTop: 8 }}>
+            Cancella tutti i dati del viaggio. Operazione non annullabile.
+          </div>
+        </section>
+      ) : null}
 
       <section className="cover-card">
         <div className="cover-card__image-wrap">
@@ -373,7 +466,7 @@ function TripCover() {
         </div>
       </section>
 
-      {mode === 'organizer' && (
+      {isOrganizerMode && (
         <section className="panel-card">
           <div className="panel-card__header">
             <h2 className="section-title">Modifica copertina</h2>
@@ -486,42 +579,6 @@ function TripCover() {
           </div>
         </section>
       )}
-
-      {showPrintMenu ? (
-        <div style={modalBackdropStyle} onClick={() => setShowPrintMenu(false)}>
-          <div style={modalCardStyle} onClick={(e) => e.stopPropagation()}>
-            <div style={{ fontSize: 16, fontWeight: 800 }}>Scegli cosa stampare</div>
-            <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 4 }}>
-              Tocca una sezione.
-            </div>
-
-            <div style={modalGridStyle}>
-              {PRINT_OPTIONS.map((option) => (
-                <button
-                  key={option.key}
-                  type="button"
-                  style={modalButtonStyle}
-                  onClick={() => handlePrintSelect(option.key)}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowPrintMenu(false)}
-              style={{
-                ...modalButtonStyle,
-                width: '100%',
-                marginTop: 12
-              }}
-            >
-              Annulla
-            </button>
-          </div>
-        </div>
-      ) : null}
     </section>
   );
 }

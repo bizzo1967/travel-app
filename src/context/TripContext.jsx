@@ -18,6 +18,8 @@ import {
   createMapRoute
 } from '../data/tripFactory.js';
 
+const ADMIN_LOCK_KEY = 'travel-planner-admin-lock-v1';
+
 const TripContext = createContext(null);
 
 function createEmptyTrip() {
@@ -57,6 +59,14 @@ function getInitialTrip() {
   return ensureTripShape(baseTrip);
 }
 
+function getInitialAdminLock() {
+  try {
+    return window.localStorage.getItem(ADMIN_LOCK_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
 function getEventSortValue(item) {
   return item.startTime || item.time || '99:99';
 }
@@ -69,13 +79,21 @@ function sortTimeline(items = []) {
 
 export function TripProvider({ children }) {
   const [trip, setTrip] = useState(getInitialTrip);
-  const [mode, setMode] = useState('travel');
+  const [mode, setModeState] = useState('travel');
   const [activeTab, setActiveTab] = useState('cover');
   const [selectedDayId, setSelectedDayId] = useState(() => getInitialTrip().days[0]?.id || '');
+  const [adminLock, setAdminLock] = useState(getInitialAdminLock);
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
 
   useEffect(() => {
     saveTripToStorage(trip);
   }, [trip]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(ADMIN_LOCK_KEY, String(adminLock));
+    } catch {}
+  }, [adminLock]);
 
   useEffect(() => {
     if (!trip.days.some((day) => day.id === selectedDayId)) {
@@ -83,8 +101,48 @@ export function TripProvider({ children }) {
     }
   }, [trip.days, selectedDayId]);
 
+  useEffect(() => {
+    if (!isAdminAuthenticated && mode === 'organizer') {
+      setModeState('travel');
+    }
+  }, [isAdminAuthenticated, mode]);
+
   const selectedDay =
     trip.days.find((day) => day.id === selectedDayId) || trip.days[0] || null;
+
+  const setMode = (nextMode) => {
+    if (nextMode === 'organizer' && !isAdminAuthenticated) return;
+    setModeState(nextMode);
+  };
+
+  const startAdminSession = () => {
+    setIsAdminAuthenticated(true);
+    setModeState('organizer');
+  };
+
+  const endAdminSession = () => {
+    setIsAdminAuthenticated(false);
+    setModeState('travel');
+  };
+
+  const switchToUserView = () => {
+    setModeState('travel');
+  };
+
+  const switchToAdminView = () => {
+    if (!isAdminAuthenticated) return;
+    setModeState('organizer');
+  };
+
+  const enableAdminLock = () => {
+    setAdminLock(true);
+    setIsAdminAuthenticated(false);
+    setModeState('travel');
+  };
+
+  const disableAdminLock = () => {
+    setAdminLock(false);
+  };
 
   const updateMeta = (patch) => {
     setTrip((prev) => ({
@@ -110,6 +168,8 @@ export function TripProvider({ children }) {
     setTrip(emptyTrip);
     setSelectedDayId('');
     setActiveTab('cover');
+    setIsAdminAuthenticated(false);
+    setModeState('travel');
     window.localStorage.removeItem(STORAGE_KEY);
   };
 
@@ -389,6 +449,14 @@ export function TripProvider({ children }) {
       trip,
       mode,
       setMode,
+      adminLock,
+      isAdminAuthenticated,
+      startAdminSession,
+      endAdminSession,
+      switchToUserView,
+      switchToAdminView,
+      enableAdminLock,
+      disableAdminLock,
       activeTab,
       setActiveTab,
       selectedDayId,
@@ -426,7 +494,7 @@ export function TripProvider({ children }) {
       updateTravelDoc,
       removeTravelDoc
     }),
-    [trip, mode, activeTab, selectedDayId, selectedDay]
+    [trip, mode, adminLock, isAdminAuthenticated, activeTab, selectedDayId, selectedDay]
   );
 
   return <TripContext.Provider value={value}>{children}</TripContext.Provider>;

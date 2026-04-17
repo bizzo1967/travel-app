@@ -1,18 +1,21 @@
 import { useTrip } from '../../context/TripContext.jsx';
 
-const ADMIN_LOCK_STORAGE_KEY = 'travel_planner_admin_lock';
-
 function Header() {
-  const { trip, mode, setMode } = useTrip();
+  const {
+    trip,
+    mode,
+    isAdminAuthenticated,
+    switchToUserView,
+    switchToAdminView
+  } = useTrip();
 
-  const adminLockEnabled =
-    window.localStorage.getItem(ADMIN_LOCK_STORAGE_KEY) === 'true';
+  const isOrganizerMode = mode === 'organizer';
 
-  const handleToggleMode = () => {
-    if (mode === 'organizer') {
-      setMode('travel');
+  const handleToggleView = () => {
+    if (isOrganizerMode) {
+      switchToUserView();
     } else {
-      setMode('organizer');
+      switchToAdminView();
     }
   };
 
@@ -39,14 +42,14 @@ function Header() {
         {trip.meta?.name || 'Travel Planner'}
       </div>
 
-      {!adminLockEnabled && (
+      {isAdminAuthenticated && (
         <button
           type="button"
           className="ghost-button"
-          onClick={handleToggleMode}
+          onClick={handleToggleView}
           style={{ whiteSpace: 'nowrap' }}
         >
-          {mode === 'organizer' ? 'Torna al viaggio' : 'Admin'}
+          {isOrganizerMode ? 'Vedi come utente' : 'Torna a modifica'}
         </button>
       )}
     </header>
